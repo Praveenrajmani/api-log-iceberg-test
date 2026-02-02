@@ -97,7 +97,7 @@ MinIO Cluster (4 nodes)
 | Variable                     | Default  | Description                          |
 | ---------------------------- | -------- | ------------------------------------ |
 | `MINIO_LICENSE`              | required | MinIO AIStor license key             |
-| `ICEBERG_BUCKET`             | api-logs | Warehouse bucket for API logs        |
+| `ICEBERG_WAREHOUSE`          | api-logs | Warehouse for API logs               |
 | `ICEBERG_NAMESPACE`          | minio    | Iceberg namespace                    |
 | `ICEBERG_TABLE`              | api_logs | Iceberg table name                   |
 | `ICEBERG_WRITE_INTERVAL`     | 30s      | How often to write Parquet files     |
@@ -111,7 +111,7 @@ These are set automatically in the docker-compose:
 ```
 MINIO_LOG_API_INTERNAL_ENABLE=on
 MINIO_LOG_API_INTERNAL_ICEBERG_ENABLE=on
-MINIO_LOG_API_INTERNAL_ICEBERG_BUCKET=api-logs
+MINIO_LOG_API_INTERNAL_ICEBERG_WAREHOUSE=api-logs
 MINIO_LOG_API_INTERNAL_ICEBERG_NAMESPACE=minio
 MINIO_LOG_API_INTERNAL_ICEBERG_TABLE=api_logs
 MINIO_LOG_API_INTERNAL_ICEBERG_WRITE_INTERVAL=30s

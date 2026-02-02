@@ -11,7 +11,7 @@
 # The MinIO cluster writes API logs directly to an Iceberg table using:
 #   - MINIO_LOG_API_INTERNAL_ENABLE: enables internal API log storage
 #   - MINIO_LOG_API_INTERNAL_ICEBERG_ENABLE: enables Iceberg table format
-#   - MINIO_LOG_API_INTERNAL_ICEBERG_BUCKET: target bucket (must be a warehouse)
+#   - MINIO_LOG_API_INTERNAL_ICEBERG_WAREHOUSE: target warehouse for Iceberg tables
 #
 # Configuration: Copy .env.sample to .env and configure your settings
 
@@ -32,8 +32,7 @@ x-minio-common: &minio-common
     MINIO_LOG_API_INTERNAL_FLUSH_INTERVAL: ${API_LOG_FLUSH_INTERVAL:-1m}
     # Iceberg API Log Configuration
     MINIO_LOG_API_INTERNAL_ICEBERG_ENABLE: "on"
-    MINIO_LOG_API_INTERNAL_ICEBERG_BUCKET: ${ICEBERG_BUCKET:-api-logs}
-    MINIO_LOG_API_INTERNAL_ICEBERG_PREFIX: ${ICEBERG_PREFIX:-}
+    MINIO_LOG_API_INTERNAL_ICEBERG_WAREHOUSE: ${ICEBERG_WAREHOUSE:-api-logs}
     MINIO_LOG_API_INTERNAL_ICEBERG_NAMESPACE: ${ICEBERG_NAMESPACE:-minio}
     MINIO_LOG_API_INTERNAL_ICEBERG_TABLE: ${ICEBERG_TABLE:-api_logs}
     MINIO_LOG_API_INTERNAL_ICEBERG_WRITE_INTERVAL: ${ICEBERG_WRITE_INTERVAL:-30s}
@@ -155,7 +154,7 @@ services:
       MINIO_ENDPOINT: http://nginx:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
-      WAREHOUSE_BUCKET: ${ICEBERG_BUCKET:-api-logs}
+      WAREHOUSE_BUCKET: ${ICEBERG_WAREHOUSE:-api-logs}
       NAMESPACE: ${ICEBERG_NAMESPACE:-minio}
       TABLE_NAME: ${ICEBERG_TABLE:-api_logs}
       TRINO_HOST: trino
