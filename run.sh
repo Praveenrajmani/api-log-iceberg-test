@@ -16,6 +16,9 @@ NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Unset COMPOSE_PROJECT_NAME so the project name from docker-compose.yaml is used
+unset COMPOSE_PROJECT_NAME
+
 print_banner() {
     echo -e "${CYAN}"
     cat << 'EOF'
@@ -191,6 +194,15 @@ start_services() {
     │    • Namespace:          minio                                  │
     │    • Table:              api_logs                               │
     │                                                                 │
+    ├─────────────────────────────────────────────────────────────────┤
+    │                                                                 │
+    │  Query logs in Trino:                                           │
+    │    docker exec -it trino trino                                 │
+    │                                                                 │
+    │    USE api_logs.minio;                                          │
+    │    SELECT COUNT(*) FROM api_logs;                               │
+    │    SELECT time, name, bucket, object FROM api_logs LIMIT 10;   │
+    │                                                                 │
     └─────────────────────────────────────────────────────────────────┘
 EOF
     echo -e "${NC}"
@@ -198,11 +210,6 @@ EOF
     print_msg "$CYAN" "Quick start:"
     echo "  # Generate API logs"
     echo "  $0 generate --count 100"
-    echo ""
-    echo "  # Wait for logs to be committed (default: ~2 minutes)"
-    echo ""
-    echo "  # Query logs in Trino"
-    echo "  docker exec -it trino trino --execute 'SELECT * FROM minio_iceberg.minio.api_logs LIMIT 10'"
     echo ""
     print_msg "$CYAN" "Other commands:"
     echo "  $0 status              - Check service status"
@@ -302,8 +309,8 @@ generate_logs() {
     print_msg "$GREEN" "✓ API log generation complete!"
     print_msg "$CYAN" ""
     print_msg "$CYAN" "Logs will be written to the Iceberg table after:"
-    print_msg "$CYAN" "  - Write interval: ${ICEBERG_WRITE_INTERVAL:-30s}"
-    print_msg "$CYAN" "  - Commit interval: ${ICEBERG_COMMIT_INTERVAL:-1m}"
+    print_msg "$CYAN" "  - Parquet flush: every ${PARQUET_FLUSH_COUNT:-10} records or ${PARQUET_FLUSH_INTERVAL:-1m}"
+    print_msg "$CYAN" "  - Commit interval: ${ICEBERG_COMMIT_INTERVAL:-3m}"
     print_msg "$CYAN" ""
     print_msg "$CYAN" "Query logs with Trino:"
     echo "  docker exec -it trino trino --execute 'SELECT COUNT(*) FROM minio_iceberg.minio.api_logs'"

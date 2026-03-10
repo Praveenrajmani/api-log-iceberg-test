@@ -9,10 +9,13 @@ which writes API access logs directly to an Iceberg table without requiring Kafk
 MinIO Cluster (4 nodes)
         │
         ▼
-  Internal API Logs
+  In-Memory Buffer
         │
         ▼
-  Iceberg Table (Parquet files)
+  S3 Parquet Files (per node)
+        │
+        ▼
+  Iceberg Table (leader commits)
         │
         ▼
   Trino (SQL queries)
@@ -21,9 +24,10 @@ MinIO Cluster (4 nodes)
 ### Key Features
 
 - **Native Iceberg**: No Kafka required - MinIO writes directly to Iceberg
-- **Distributed**: Each node writes its logs, leader commits to Iceberg
+- **No Local Disk**: Logs flow from memory to S3 as Parquet files
+- **Distributed**: Each node flushes its logs to S3, leader commits to Iceberg
 - **Queryable**: Use Trino or any Iceberg-compatible query engine
-- **Configurable**: Adjustable write and commit intervals
+- **Configurable**: Adjustable flush and commit intervals
 
 ## Quick Start
 
@@ -56,8 +60,8 @@ MinIO Cluster (4 nodes)
 
 4. **Wait for logs to be committed**
 
-   Default intervals: write every 30s, commit every 1m.
-   Wait approximately 2 minutes for logs to appear.
+   Default: flush every 10 records or 1m, commit every 3m.
+   Wait approximately 5 minutes for logs to appear.
 
 5. **Query logs with Trino**
 
@@ -72,37 +76,37 @@ MinIO Cluster (4 nodes)
 
 ## Commands
 
-| Command                      | Description                             |
-| ---------------------------- | --------------------------------------- |
-| `./run.sh start`             | Start all services                      |
-| `./run.sh stop`              | Stop all services                       |
-| `./run.sh status`            | Show service status                     |
-| `./run.sh logs -f`           | Follow service logs                     |
-| `./run.sh generate --count N`| Generate N API operations               |
-| `./run.sh continuous`        | Generate logs continuously (Ctrl+C)     |
-| `./run.sh clean`             | Stop and remove all data                |
+| Command                       | Description                        |
+| ----------------------------- | ---------------------------------- |
+| `./run.sh start`              | Start all services                 |
+| `./run.sh stop`               | Stop all services                  |
+| `./run.sh status`             | Show service status                |
+| `./run.sh logs -f`            | Follow service logs                |
+| `./run.sh generate --count N` | Generate N API operations          |
+| `./run.sh continuous`         | Generate logs continuously (Ctrl+C)|
+| `./run.sh clean`              | Stop and remove all data           |
 
 ## Services
 
-| Service        | URL                    | Credentials           |
-| -------------- | ---------------------- | --------------------- |
-| MinIO Console  | http://localhost:9001  | minioadmin/minioadmin |
-| MinIO API      | http://localhost:9000  | minioadmin/minioadmin |
-| Trino          | http://localhost:9999  | -                     |
+| Service       | URL                   | Credentials          |
+| ------------- | --------------------- | -------------------- |
+| MinIO Console | http://localhost:9001 | minioadmin/minioadmin|
+| MinIO API     | http://localhost:9000 | minioadmin/minioadmin|
+| Trino         | http://localhost:9999 | -                    |
 
 ## Configuration
 
 ### Environment Variables
 
-| Variable                     | Default  | Description                          |
-| ---------------------------- | -------- | ------------------------------------ |
-| `MINIO_LICENSE`              | required | MinIO AIStor license key             |
-| `ICEBERG_WAREHOUSE`          | api-logs | Warehouse for API logs               |
-| `ICEBERG_NAMESPACE`          | minio    | Iceberg namespace                    |
-| `ICEBERG_TABLE`              | api_logs | Iceberg table name                   |
-| `ICEBERG_WRITE_INTERVAL`     | 30s      | How often to write Parquet files     |
-| `ICEBERG_COMMIT_INTERVAL`    | 1m       | How often to commit to Iceberg       |
-| `ICEBERG_BATCH_SIZE`         | 1000     | Records per Parquet file             |
+| Variable               | Default  | Description                           |
+| ---------------------- | -------- | ------------------------------------- |
+| `MINIO_LICENSE`        | required | MinIO AIStor license key              |
+| `ICEBERG_WAREHOUSE`    | api-logs | Warehouse for API logs                |
+| `ICEBERG_NAMESPACE`    | minio    | Iceberg namespace                     |
+| `ICEBERG_TABLE`        | api_logs | Iceberg table name                    |
+| `PARQUET_FLUSH_COUNT`  | 10       | Records before flushing to Parquet    |
+| `PARQUET_FLUSH_INTERVAL`| 1m      | Max time before flushing to Parquet   |
+| `ICEBERG_COMMIT_INTERVAL`| 3m     | How often to commit to Iceberg        |
 
 ### MinIO Environment Variables
 
@@ -110,12 +114,12 @@ These are set automatically in the docker-compose:
 
 ```
 MINIO_LOG_API_INTERNAL_ENABLE=on
-MINIO_LOG_API_INTERNAL_ICEBERG_ENABLE=on
-MINIO_LOG_API_INTERNAL_ICEBERG_WAREHOUSE=api-logs
-MINIO_LOG_API_INTERNAL_ICEBERG_NAMESPACE=minio
-MINIO_LOG_API_INTERNAL_ICEBERG_TABLE=api_logs
-MINIO_LOG_API_INTERNAL_ICEBERG_WRITE_INTERVAL=30s
-MINIO_LOG_API_INTERNAL_ICEBERG_COMMIT_INTERVAL=1m
+MINIO_LOG_API_INTERNAL_WAREHOUSE=api-logs
+MINIO_LOG_API_INTERNAL_NAMESPACE=minio
+MINIO_LOG_API_INTERNAL_TABLE=api_logs
+_MINIO_LOG_API_INTERNAL_PARQUET_FLUSH_COUNT=10
+_MINIO_LOG_API_INTERNAL_PARQUET_FLUSH_INTERVAL=1m
+_MINIO_LOG_API_INTERNAL_ICEBERG_COMMIT_INTERVAL=3m
 ```
 
 ## Querying API Logs
@@ -171,45 +175,45 @@ ORDER BY cnt DESC;
 
 The API logs table includes:
 
-| Column              | Type      | Description                    |
-| ------------------- | --------- | ------------------------------ |
-| time                | timestamp | Request timestamp              |
-| name                | string    | API operation name             |
-| bucket              | string    | Target bucket                  |
-| object              | string    | Target object key              |
-| httpStatusCode      | int       | HTTP response status           |
-| inputBytes          | long      | Request body size              |
-| outputBytes         | long      | Response body size             |
-| requestTime         | string    | Total request duration         |
-| timeToFirstByte     | string    | Time to first response byte    |
-| sourceHost          | string    | Client IP address              |
-| userAgent           | string    | Client user agent              |
-| accessKey           | string    | Access key used                |
-| requestId           | string    | Unique request ID              |
-| node                | string    | MinIO node that handled request|
+| Column         | Type      | Description                     |
+| -------------- | --------- | ------------------------------- |
+| time           | timestamp | Request timestamp               |
+| name           | string    | API operation name              |
+| bucket         | string    | Target bucket                   |
+| object         | string    | Target object key               |
+| httpStatusCode | int       | HTTP response status            |
+| inputBytes     | long      | Request body size               |
+| outputBytes    | long      | Response body size              |
+| requestTime    | string    | Total request duration          |
+| timeToFirstByte| string    | Time to first response byte     |
+| sourceHost     | string    | Client IP address               |
+| userAgent      | string    | Client user agent               |
+| accessKey      | string    | Access key used                 |
+| requestId      | string    | Unique request ID               |
+| node           | string    | MinIO node that handled request |
 
 ## How It Works
 
 1. **API Request**: Client makes S3 API call to MinIO
-2. **Log Recording**: MinIO records the API call in memory
-3. **Local Flush**: Periodically flushes to local disk (internal storage)
-4. **Parquet Write**: Each node writes its logs to Parquet files
-5. **Iceberg Commit**: Leader node commits Parquet files to Iceberg table
+2. **Log Recording**: MinIO records the API call in an in-memory buffer
+3. **Parquet Flush**: Each node flushes directly to S3 as Parquet files (on count or interval)
+4. **Index Marker**: A 0-byte index marker is created for each Parquet file
+5. **Iceberg Commit**: Leader node commits pending Parquet files to the Iceberg table
 6. **Query**: Use Trino or other tools to query the Iceberg table
 
-### Write Loop (per node)
+### Flush (per node)
 
 - Runs on every MinIO node
-- Reads local API logs since last checkpoint
-- Writes them to Parquet files in the warehouse
-- Creates index files for the commit loop
+- Buffers API logs in memory
+- Flushes to S3 as Parquet files when count threshold or time interval is reached
+- Creates 0-byte index markers for the commit loop to discover
 
 ### Commit Loop (leader only)
 
 - Uses distributed locking to elect leader
-- Collects all pending Parquet files from all nodes
-- Commits them atomically to the Iceberg table
-- Cleans up index files after successful commit
+- Lists all pending index markers from all nodes
+- Commits referenced Parquet files atomically to the Iceberg table
+- Cleans up index markers after successful commit
 
 ## Troubleshooting
 

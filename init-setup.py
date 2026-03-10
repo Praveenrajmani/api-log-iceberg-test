@@ -148,12 +148,12 @@ Use the mc client to generate API traffic that will be logged:
 STEP 2: Wait for Logs to be Committed
 =====================================
 The API logs are:
-  1. Written to local storage on each MinIO node
-  2. Periodically batched into Parquet files (write_interval)
+  1. Buffered in memory on each MinIO node
+  2. Flushed directly to S3 as Parquet files (parquet_flush_interval / parquet_flush_count)
   3. Committed to the Iceberg table by the leader (commit_interval)
 
-Default intervals are 30s write / 1m commit for this test setup.
-Wait at least 2 minutes after generating traffic for logs to appear.
+Default: flush every 10 records or 1m, commit every 3m for this test setup.
+Wait at least 5 minutes after generating traffic for logs to appear.
 
 STEP 3: Query Logs with Trino
 =============================
