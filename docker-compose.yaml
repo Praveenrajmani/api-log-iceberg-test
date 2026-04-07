@@ -12,7 +12,8 @@ name: api-log-iceberg-test
 #
 # The MinIO cluster writes API logs directly to an Iceberg table using:
 #   - MINIO_LOG_API_INTERNAL_ENABLE: enables internal API log recording
-#   - MINIO_LOG_API_INTERNAL_WAREHOUSE: S3 bucket for Iceberg table storage
+#
+# Logs are stored in the system warehouse (minio.logs.api) automatically.
 #
 # Configuration: Copy .env.sample to .env and configure your settings
 
@@ -27,11 +28,8 @@ x-minio-common: &minio-common
     MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
     MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
     MINIO_LICENSE: ${MINIO_LICENSE}
-    # API Log Configuration
+    # API Log Configuration (logs go to system warehouse minio.logs.api)
     MINIO_LOG_API_INTERNAL_ENABLE: "on"
-    MINIO_LOG_API_INTERNAL_WAREHOUSE: ${ICEBERG_WAREHOUSE:-api-logs}
-    MINIO_LOG_API_INTERNAL_NAMESPACE: ${ICEBERG_NAMESPACE:-minio}
-    MINIO_LOG_API_INTERNAL_TABLE: ${ICEBERG_TABLE:-api_logs}
     # Hidden tuning ENVs (for testing with smaller batches / shorter intervals)
     _MINIO_LOG_API_INTERNAL_PARQUET_FLUSH_COUNT: ${PARQUET_FLUSH_COUNT:-10}
     _MINIO_LOG_API_INTERNAL_PARQUET_FLUSH_INTERVAL: ${PARQUET_FLUSH_INTERVAL:-1m}
@@ -121,8 +119,11 @@ services:
     depends_on:
       nginx:
         condition: service_healthy
-    environment:
-      - CATALOG_MANAGEMENT=dynamic
+    command: >
+      bash -c "
+        echo 'catalog.management=dynamic' >> /etc/trino/config.properties &&
+        /usr/lib/trino/bin/run-trino
+      "
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/v1/status"]
       interval: 5s
@@ -135,7 +136,7 @@ services:
       - api-log-iceberg
 
   # ============================================================================
-  # Init Container - Creates warehouse bucket, generates traffic, sets up Trino
+  # Init Container - Sets up Trino catalog for querying minio.logs.api
   # ============================================================================
   init:
     image: python:3.11-slim
@@ -151,18 +152,8 @@ services:
       MINIO_ENDPOINT: http://nginx:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
-      WAREHOUSE_BUCKET: ${ICEBERG_WAREHOUSE:-api-logs}
-      NAMESPACE: ${ICEBERG_NAMESPACE:-minio}
-      TABLE_NAME: ${ICEBERG_TABLE:-api_logs}
       TRINO_HOST: trino
       TRINO_PORT: 8080
-      # Traffic generation settings
-      GENERATE_TRAFFIC: ${GENERATE_TRAFFIC:-true}
-      TRAFFIC_BUCKET: ${TRAFFIC_BUCKET:-test-data}
-      TRAFFIC_OBJECTS: ${TRAFFIC_OBJECTS:-100}
-      TRAFFIC_OBJECT_SIZE: ${TRAFFIC_OBJECT_SIZE:-1024}
-      # Wait time for logs to be written to Iceberg
-      WAIT_FOR_ICEBERG_SECONDS: ${WAIT_FOR_ICEBERG_SECONDS:-120}
     entrypoint: >
       bash -c "
         pip install -q requests trino &&

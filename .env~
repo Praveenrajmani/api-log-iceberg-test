@@ -1,3 +1,4 @@
+COMPOSE_PROJECT_NAME=api-log-iceberg-test
 # API Log Iceberg Test Configuration
 # ===================================
 #
@@ -7,19 +8,12 @@
 # Then edit .env with your license key and any customizations.
 
 # =============================================================================
-# Docker Compose Project Name
-# =============================================================================
-
-# Explicit project name to avoid inheriting COMPOSE_PROJECT_NAME from the shell
-COMPOSE_PROJECT_NAME=api-log-iceberg-test
-
-# =============================================================================
 # MinIO Container Image
 # =============================================================================
 
 # MinIO AIStor image with Iceberg API log support
 # Use a local build or the latest EDGE release
-MINIO_IMAGE=minio/minio:latest
+MINIO_IMAGE=docker.io/praveenminio/eos:iceberg-log-writer-debug
 
 # =============================================================================
 # MinIO License (REQUIRED)
@@ -27,7 +21,7 @@ MINIO_IMAGE=minio/minio:latest
 
 # MinIO License (required for AIStor features including Iceberg)
 # Get your license from https://min.io/pricing
-MINIO_LICENSE=your-license-key-here
+MINIO_LICENSE=eyJhbGciOiJFUzM4NCIsInR5cCI6IkpXVCJ9.eyJhaWQiOjEsImFwaUtleSI6ImNlYzM1YjAzLTRmMDItMTMwYy04MjU2LWE2NTc3MTAyZjA4MSIsImNhcCI6MTA1MCwiZXhwIjoxODYxOTE5OTk5LCJncnAiOjEsImlhdCI6MS43NjMxODAwNTgyMjA1MzkwNzFlOSwiaXNzIjoic3VibmV0QG1pbi5pbyIsImxpZCI6ImZmYTdkOWE5LTZhZDMtNDYyYy1iNjQ1LTIxNDBmOTgyOTkwZiIsIm9yZyI6IkdyaW5nb3R0cyIsInBsYW4iOiJFTlRFUlBSSVNFIiwicm9wIjoyLCJzdWIiOiJzdWJuZXRAbWluLmlvIiwidHJpYWwiOmZhbHNlfQ.Q2t1ZSGteuP_ZflnkkoRm0x8wnKikXAqMg9awX64TinbwEe2g2Hiyih1nqwF-sLAl9SL3Xz_Mt_D-RcadIjY01w5Sco_fSJe9KVIqbSil7UVcV_YK9ojdkysTZ-7gN84
 
 # =============================================================================
 # MinIO Credentials
@@ -40,7 +34,6 @@ MINIO_ROOT_PASSWORD=minioadmin
 # Iceberg API Log Configuration
 # =============================================================================
 # API logs are stored in the system warehouse (minio.logs.api) automatically.
-# No warehouse, namespace, or table configuration is needed.
 
 # =============================================================================
 # Hidden Tuning (for testing with smaller batches / shorter intervals)
@@ -48,15 +41,15 @@ MINIO_ROOT_PASSWORD=minioadmin
 
 # Record count before flushing to a Parquet file (default: 50000)
 # Set lower for testing to see results faster
-PARQUET_FLUSH_COUNT=10
+PARQUET_FLUSH_COUNT=1000
 
 # Max time before flushing to a Parquet file (default: 1h)
 # Set lower for testing to see results faster
-PARQUET_FLUSH_INTERVAL=1m
+PARQUET_FLUSH_INTERVAL=30s
 
 # How often the leader commits Parquet files to Iceberg (default: 24h)
 # Set lower for testing to see results faster
-ICEBERG_COMMIT_INTERVAL=3m
+ICEBERG_COMMIT_INTERVAL=1m
 
 # =============================================================================
 # Trino Configuration
@@ -77,3 +70,21 @@ CONSOLE_PORT=9001
 # Trino Web UI / JDBC port
 TRINO_PORT=9999
 
+# =============================================================================
+# Traffic Generation (for testing)
+# =============================================================================
+
+# Enable traffic generation to create API log entries
+GENERATE_TRAFFIC=true
+
+# Bucket for test data
+TRAFFIC_BUCKET=test-data
+
+# Number of objects to create
+TRAFFIC_OBJECTS=100
+
+# Size of each object in bytes
+TRAFFIC_OBJECT_SIZE=1024
+
+# How long to wait for logs to appear in Iceberg (seconds)
+WAIT_FOR_ICEBERG_SECONDS=120

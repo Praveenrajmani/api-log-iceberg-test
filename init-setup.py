@@ -23,9 +23,10 @@ import requests
 MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://nginx:9000")
 ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
 SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
-WAREHOUSE_BUCKET = os.getenv("WAREHOUSE_BUCKET", "api-logs")
-NAMESPACE = os.getenv("NAMESPACE", "minio")
-TABLE_NAME = os.getenv("TABLE_NAME", "api_logs")
+# API logs are stored in the system warehouse (minio.logs.api).
+WAREHOUSE = "minio"
+NAMESPACE = "logs"
+TABLE_NAME = "api"
 TRINO_HOST = os.getenv("TRINO_HOST", "trino")
 TRINO_PORT = int(os.getenv("TRINO_PORT", "8080"))
 
@@ -57,7 +58,7 @@ def setup_trino_catalog():
 
     log("Setting up Trino catalog...")
 
-    catalog_name = WAREHOUSE_BUCKET.replace("-", "_")  # Trino catalog names can't have hyphens
+    catalog_name = WAREHOUSE  # System warehouse name is already Trino-safe
 
     try:
         conn = trino.dbapi.connect(
@@ -73,7 +74,7 @@ def setup_trino_catalog():
             WITH (
                 "iceberg.catalog.type" = 'rest',
                 "iceberg.rest-catalog.uri" = '{MINIO_ENDPOINT}/_iceberg',
-                "iceberg.rest-catalog.warehouse" = '{WAREHOUSE_BUCKET}',
+                "iceberg.rest-catalog.warehouse" = '{WAREHOUSE}',
                 "iceberg.rest-catalog.vended-credentials-enabled" = 'true',
                 "iceberg.rest-catalog.security" = 'SIGV4',
                 "iceberg.rest-catalog.signing-name" = 's3tables',
@@ -117,7 +118,7 @@ def print_instructions(catalog_name):
     print("=" * 70)
     print(f"""
 The MinIO cluster is configured to write API logs to an Iceberg table.
-Logs will be written to: {WAREHOUSE_BUCKET}/{NAMESPACE}/{TABLE_NAME}
+Logs are stored in the system warehouse: {WAREHOUSE}.{NAMESPACE}.{TABLE_NAME}
 
 CONFIGURATION:
   - Write interval: logs are batched and written to Parquet files periodically
@@ -178,7 +179,7 @@ If the catalog wasn't created automatically, create it in Trino:
   CREATE CATALOG {catalog_name} USING iceberg WITH (
     "iceberg.catalog.type" = 'rest',
     "iceberg.rest-catalog.uri" = '{MINIO_ENDPOINT}/_iceberg',
-    "iceberg.rest-catalog.warehouse" = '{WAREHOUSE_BUCKET}',
+    "iceberg.rest-catalog.warehouse" = '{WAREHOUSE}',
     "iceberg.rest-catalog.vended-credentials-enabled" = 'true',
     "iceberg.rest-catalog.security" = 'SIGV4',
     "iceberg.rest-catalog.signing-name" = 's3tables',

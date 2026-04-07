@@ -76,9 +76,9 @@ SERVICES:
   Trino:           http://localhost:9999
 
 ICEBERG TABLE:
-  Warehouse:       api-logs (configurable)
-  Namespace:       minio
-  Table:           api_logs
+  Warehouse:       minio
+  Namespace:       logs
+  Table:           api
 
 OPTIONS:
   -h, --help      Show this help message
@@ -97,7 +97,7 @@ EXAMPLES:
   $0 continuous
 
   # Query logs in Trino
-  docker exec -it trino trino --execute 'SELECT * FROM minio_iceberg.minio.api_logs LIMIT 10'
+  docker exec -it trino trino --execute 'SELECT * FROM minio.logs.api LIMIT 10'
 
   # View logs
   $0 logs -f
@@ -190,18 +190,18 @@ start_services() {
     │  Credentials:            minioadmin / minioadmin                │
     │                                                                 │
     │  Iceberg Table:                                                 │
-    │    • Warehouse:          api-logs                               │
-    │    • Namespace:          minio                                  │
-    │    • Table:              api_logs                               │
+    │    • Warehouse:          minio                                  │
+    │    • Namespace:          logs                                   │
+    │    • Table:              api                                    │
     │                                                                 │
     ├─────────────────────────────────────────────────────────────────┤
     │                                                                 │
     │  Query logs in Trino:                                           │
     │    docker exec -it trino trino                                 │
     │                                                                 │
-    │    USE api_logs.minio;                                          │
-    │    SELECT COUNT(*) FROM api_logs;                               │
-    │    SELECT time, name, bucket, object FROM api_logs LIMIT 10;   │
+    │    USE minio.logs;                                              │
+    │    SELECT COUNT(*) FROM api;                                    │
+    │    SELECT time, name, bucket, object FROM api LIMIT 10;        │
     │                                                                 │
     └─────────────────────────────────────────────────────────────────┘
 EOF
@@ -313,7 +313,7 @@ generate_logs() {
     print_msg "$CYAN" "  - Commit interval: ${ICEBERG_COMMIT_INTERVAL:-3m}"
     print_msg "$CYAN" ""
     print_msg "$CYAN" "Query logs with Trino:"
-    echo "  docker exec -it trino trino --execute 'SELECT COUNT(*) FROM minio_iceberg.minio.api_logs'"
+    echo "  docker exec -it trino trino --execute 'SELECT COUNT(*) FROM minio.logs.api'"
 }
 
 # Generate logs continuously
