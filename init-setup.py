@@ -23,8 +23,8 @@ import requests
 MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://nginx:9000")
 ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
 SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
-# API logs are stored in the system warehouse (minio.logs.api).
-WAREHOUSE = "minio"
+# API logs are stored in the system warehouse (aistor.logs.api).
+WAREHOUSE = "aistor"
 NAMESPACE = "logs"
 TABLE_NAME = "api"
 TRINO_HOST = os.getenv("TRINO_HOST", "trino")

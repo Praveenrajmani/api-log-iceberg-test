@@ -76,7 +76,7 @@ SERVICES:
   Trino:           http://localhost:9999
 
 ICEBERG TABLE:
-  Warehouse:       minio
+  Warehouse:       aistor
   Namespace:       logs
   Table:           api
 
@@ -97,7 +97,7 @@ EXAMPLES:
   $0 continuous
 
   # Query logs in Trino
-  docker exec -it trino trino --execute 'SELECT * FROM minio.logs.api LIMIT 10'
+  docker exec -it trino trino --execute 'SELECT * FROM aistor.logs.api LIMIT 10'
 
   # View logs
   $0 logs -f
@@ -199,7 +199,7 @@ start_services() {
     │  Query logs in Trino:                                           │
     │    docker exec -it trino trino                                 │
     │                                                                 │
-    │    USE minio.logs;                                              │
+    │    USE aistor.logs;                                             │
     │    SELECT COUNT(*) FROM api;                                    │
     │    SELECT time, name, bucket, object FROM api LIMIT 10;        │
     │                                                                 │
@@ -313,7 +313,7 @@ generate_logs() {
     print_msg "$CYAN" "  - Commit interval: ${ICEBERG_COMMIT_INTERVAL:-3m}"
     print_msg "$CYAN" ""
     print_msg "$CYAN" "Query logs with Trino:"
-    echo "  docker exec -it trino trino --execute 'SELECT COUNT(*) FROM minio.logs.api'"
+    echo "  docker exec -it trino trino --execute 'SELECT COUNT(*) FROM aistor.logs.api'"
 }
 
 # Generate logs continuously
